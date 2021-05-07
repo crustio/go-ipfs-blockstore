@@ -8,6 +8,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	crust "github.com/crustio/go-ipfs-encryptor/crust"
 	blocks "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
@@ -144,6 +145,16 @@ func (bs *blockstore) Get(k cid.Cid) (blocks.Block, error) {
 
 func (bs *blockstore) Put(block blocks.Block) error {
 	k := dshelp.CidToDsKey(block.Cid())
+
+	switch block.(type) {
+	case *crust.WarpedSealedBlock:
+	default:
+		// Has is cheaper than Put, so see if we already have it
+		exists, err := bs.datastore.Has(k)
+		if err == nil && exists {
+			return nil // already stored.
+		}
+	}
 
 	// Has is cheaper than Put, so see if we already have it
 	exists, err := bs.datastore.Has(k)
