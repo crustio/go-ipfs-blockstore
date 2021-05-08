@@ -3,6 +3,7 @@ package blockstore
 import (
 	"context"
 
+	crust "github.com/crustio/go-ipfs-encryptor/crust"
 	lru "github.com/hashicorp/golang-lru"
 	blocks "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
@@ -125,13 +126,17 @@ func (b *arccache) Get(k cid.Cid) (blocks.Block, error) {
 }
 
 func (b *arccache) Put(bl blocks.Block) error {
-	if has, _, ok := b.hasCached(bl.Cid()); ok && has {
-		return nil
+	if !crust.IsWarpedSealedBlock(block) {
+		if has, _, ok := b.hasCached(bl.Cid()); ok && has {
+			return nil
+		}
 	}
 
 	err := b.blockstore.Put(bl)
 	if err == nil {
-		b.cacheSize(bl.Cid(), len(bl.RawData()))
+		if !crust.IsWarpedSealedBlock(block) {
+			b.cacheSize(bl.Cid(), len(bl.RawData()))
+		}
 	}
 	return err
 }

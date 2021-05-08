@@ -146,9 +146,7 @@ func (bs *blockstore) Get(k cid.Cid) (blocks.Block, error) {
 func (bs *blockstore) Put(block blocks.Block) error {
 	k := dshelp.CidToDsKey(block.Cid())
 
-	switch block.(type) {
-	case *crust.WarpedSealedBlock:
-	default:
+	if !crust.IsWarpedSealedBlock(block) {
 		// Has is cheaper than Put, so see if we already have it
 		exists, err := bs.datastore.Has(k)
 		if err == nil && exists {
@@ -156,11 +154,6 @@ func (bs *blockstore) Put(block blocks.Block) error {
 		}
 	}
 
-	// Has is cheaper than Put, so see if we already have it
-	exists, err := bs.datastore.Has(k)
-	if err == nil && exists {
-		return nil // already stored.
-	}
 	return bs.datastore.Put(k, block.RawData())
 }
 
