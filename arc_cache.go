@@ -126,7 +126,7 @@ func (b *arccache) Get(k cid.Cid) (blocks.Block, error) {
 }
 
 func (b *arccache) Put(bl blocks.Block) error {
-	if !crust.IsWarpedSealedBlock(block) {
+	if !crust.IsWarpedSealedBlock(bl) {
 		if has, _, ok := b.hasCached(bl.Cid()); ok && has {
 			return nil
 		}
@@ -134,7 +134,7 @@ func (b *arccache) Put(bl blocks.Block) error {
 
 	err := b.blockstore.Put(bl)
 	if err == nil {
-		if !crust.IsWarpedSealedBlock(block) {
+		if !crust.IsWarpedSealedBlock(bl) {
 			b.cacheSize(bl.Cid(), len(bl.RawData()))
 		}
 	}
