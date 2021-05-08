@@ -164,9 +164,11 @@ func (bs *blockstore) PutMany(blocks []blocks.Block) error {
 	}
 	for _, b := range blocks {
 		k := dshelp.CidToDsKey(b.Cid())
-		exists, err := bs.datastore.Has(k)
-		if err == nil && exists {
-			continue
+		if !crust.IsWarpedSealedBlock(b) {
+			exists, err := bs.datastore.Has(k)
+			if err == nil && exists {
+				continue
+			}
 		}
 
 		err = t.Put(k, b.RawData())

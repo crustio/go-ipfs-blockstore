@@ -136,6 +136,9 @@ func (b *arccache) Put(bl blocks.Block) error {
 	if err == nil {
 		if !crust.IsWarpedSealedBlock(bl) {
 			b.cacheSize(bl.Cid(), len(bl.RawData()))
+		} else {
+			_, sb := crust.TryGetSealedBlock(bl.RawData())
+			b.cacheSize(bl.Cid(), sb.Size)
 		}
 	}
 	return err
@@ -146,7 +149,7 @@ func (b *arccache) PutMany(bs []blocks.Block) error {
 	for _, block := range bs {
 		// call put on block if result is inconclusive or we are sure that
 		// the block isn't in storage
-		if has, _, ok := b.hasCached(block.Cid()); !ok || (ok && !has) {
+		if has, _, ok := b.hasCached(block.Cid()); !ok || (ok && !has) || crust.IsWarpedSealedBlock(block) {
 			good = append(good, block)
 		}
 	}
@@ -155,7 +158,12 @@ func (b *arccache) PutMany(bs []blocks.Block) error {
 		return err
 	}
 	for _, block := range good {
-		b.cacheSize(block.Cid(), len(block.RawData()))
+		if !crust.IsWarpedSealedBlock(block) {
+			b.cacheSize(block.Cid(), len(block.RawData()))
+		} else {
+			_, sb := crust.TryGetSealedBlock(block.RawData())
+			b.cacheSize(block.Cid(), sb.Size)
+		}
 	}
 	return nil
 }
