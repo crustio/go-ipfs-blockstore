@@ -3,6 +3,7 @@ package blockstore
 import (
 	"context"
 
+	crust "github.com/crustio/go-ipfs-encryptor/crust"
 	lru "github.com/hashicorp/golang-lru"
 	blocks "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
@@ -125,13 +126,20 @@ func (b *arccache) Get(k cid.Cid) (blocks.Block, error) {
 }
 
 func (b *arccache) Put(bl blocks.Block) error {
-	if has, _, ok := b.hasCached(bl.Cid()); ok && has {
-		return nil
+	if !crust.IsWarpedSealedBlock(bl) {
+		if has, _, ok := b.hasCached(bl.Cid()); ok && has {
+			return nil
+		}
 	}
 
 	err := b.blockstore.Put(bl)
 	if err == nil {
-		b.cacheSize(bl.Cid(), len(bl.RawData()))
+		if !crust.IsWarpedSealedBlock(bl) {
+			b.cacheSize(bl.Cid(), len(bl.RawData()))
+		} else {
+			_, sb := crust.TryGetSealedBlock(bl.RawData())
+			b.cacheSize(bl.Cid(), sb.Size)
+		}
 	}
 	return err
 }
@@ -141,7 +149,7 @@ func (b *arccache) PutMany(bs []blocks.Block) error {
 	for _, block := range bs {
 		// call put on block if result is inconclusive or we are sure that
 		// the block isn't in storage
-		if has, _, ok := b.hasCached(block.Cid()); !ok || (ok && !has) {
+		if has, _, ok := b.hasCached(block.Cid()); !ok || (ok && !has) || crust.IsWarpedSealedBlock(block) {
 			good = append(good, block)
 		}
 	}
@@ -150,7 +158,12 @@ func (b *arccache) PutMany(bs []blocks.Block) error {
 		return err
 	}
 	for _, block := range good {
-		b.cacheSize(block.Cid(), len(block.RawData()))
+		if !crust.IsWarpedSealedBlock(block) {
+			b.cacheSize(block.Cid(), len(block.RawData()))
+		} else {
+			_, sb := crust.TryGetSealedBlock(block.RawData())
+			b.cacheSize(block.Cid(), sb.Size)
+		}
 	}
 	return nil
 }
